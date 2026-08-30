@@ -7,6 +7,24 @@ export interface SipAccountConfig {
   transport?: 'udp' | 'tcp' | 'tls';
 }
 
+export interface CallRecord {
+  id: string;
+  remote_uri: string;
+  display_name?: string;
+  direction: 'inbound' | 'outbound';
+  status: 'connected' | 'missed' | 'declined';
+  duration: number; // in seconds
+  timestamp: number; // Unix ms
+}
+
+export interface Contact {
+  id: string;
+  name: string;
+  number: string;
+  company?: string;
+  email?: string;
+}
+
 export interface AudioDevice {
   id: number;
   name: string;
@@ -64,6 +82,7 @@ export interface PjsipApi {
   onRegState: (callback: (reg: RegStateEvent) => void) => () => void;
   onAudioDevices: (callback: (devices: AudioDevicesEvent) => void) => () => void;
   onDaemonStatus: (callback: (status: DaemonStatusEvent) => void) => () => void;
+  onLog: (callback: (log: string) => void) => () => void;
 }
 
 declare global {

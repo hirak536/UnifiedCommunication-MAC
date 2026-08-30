@@ -21,12 +21,12 @@ export const SipAccountModal: React.FC<SipAccountModalProps> = ({
   registrationStatus,
   initialConfig,
 }) => {
-  const [server, setServer] = useState<string>(initialConfig?.server || '');
+  const [server, setServer] = useState<string>(initialConfig?.server || 'sip.linphone.org');
   const [port, setPort] = useState<number>(initialConfig?.port || 5060);
-  const [username, setUsername] = useState<string>(initialConfig?.username || '');
-  const [authId, setAuthId] = useState<string>(initialConfig?.auth_id || '');
+  const [username, setUsername] = useState<string>(initialConfig?.username || 'hirakpatel');
+  const [authId, setAuthId] = useState<string>(initialConfig?.auth_id || 'hirakpatel');
   const [password, setPassword] = useState<string>(initialConfig?.password || '');
-  const [transport, setTransport] = useState<'udp' | 'tcp' | 'tls'>(initialConfig?.transport || 'udp');
+  const [transport, setTransport] = useState<'udp' | 'tcp' | 'tls'>(initialConfig?.transport || 'tcp');
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
   if (!isOpen) return null;
@@ -48,40 +48,40 @@ export const SipAccountModal: React.FC<SipAccountModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
-      <div className="glass-panel w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-700/80">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+      <div className="glass-panel w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
         {/* Modal Header */}
-        <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-700/60">
+        <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-brand-600/20 text-brand-400 border border-brand-500/30">
+            <div className="p-2.5 rounded-2xl bg-brand-500/10 dark:bg-brand-600/20 text-brand-600 dark:text-brand-400 border border-brand-500/20">
               <Server className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-100">SIP Account Settings</h3>
-              <p className="text-xs text-slate-400">Configure your PBX / VoIP provider credentials</p>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">SIP Account Settings</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Configure your PBX credentials</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-surface-50 rounded-xl transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Current Status Banner */}
-        <div className="flex items-center justify-between px-3.5 py-2.5 mb-5 rounded-2xl bg-surface-200/80 border border-slate-700/50">
-          <span className="text-xs font-medium text-slate-400">Registration Status:</span>
+        <div className="flex items-center justify-between px-3.5 py-2.5 mb-5 rounded-2xl bg-slate-100 dark:bg-slate-850 border border-slate-200 dark:border-slate-800">
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Registration Status:</span>
           <div className="flex items-center gap-2">
             {isRegistered ? (
               <>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs font-semibold text-emerald-400">Registered</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Registered</span>
               </>
             ) : (
               <>
-                <AlertCircle className="w-4 h-4 text-amber-400" />
-                <span className="text-xs font-semibold text-slate-300">
+                <AlertCircle className="w-4 h-4 text-amber-500" />
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   {registrationStatus || 'Unregistered'}
                 </span>
               </>
@@ -94,24 +94,42 @@ export const SipAccountModal: React.FC<SipAccountModalProps> = ({
           {/* Server & Port */}
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2">
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">SIP Server / Domain</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">SIP Server / Domain</label>
               <input
                 type="text"
                 required
                 value={server}
                 onChange={(e) => setServer(e.target.value)}
-                placeholder="pbx.example.com"
-                className="glass-input w-full px-3 py-2 rounded-xl text-sm text-slate-100 placeholder-slate-500 outline-none"
+                placeholder="fs1.ihs.host"
+                className="glass-input w-full px-3 py-2 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Port</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Port</label>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPort(5060)}
+                    className={`text-[10px] px-1.5 py-0.5 rounded font-mono transition-colors ${port === 5060 ? 'bg-brand-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}
+                  >
+                    5060
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPort(5080)}
+                    className={`text-[10px] px-1.5 py-0.5 rounded font-mono transition-colors ${port === 5080 ? 'bg-brand-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}
+                  >
+                    5080
+                  </button>
+                </div>
+              </div>
               <input
                 type="number"
                 value={port}
                 onChange={(e) => setPort(Number(e.target.value))}
-                placeholder="5060"
-                className="glass-input w-full px-3 py-2 rounded-xl text-sm text-slate-100 placeholder-slate-500 outline-none"
+                placeholder="5080"
+                className="glass-input w-full px-3 py-2 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none font-mono"
               />
             </div>
           </div>
@@ -119,47 +137,47 @@ export const SipAccountModal: React.FC<SipAccountModalProps> = ({
           {/* Username & Auth ID */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Username / Ext</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Username / Ext</label>
               <div className="relative">
                 <input
                   type="text"
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="1001"
-                  className="glass-input w-full pl-9 pr-3 py-2 rounded-xl text-sm text-slate-100 placeholder-slate-500 outline-none"
+                  placeholder="901-iHDT"
+                  className="glass-input w-full pl-9 pr-3 py-2 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none"
                 />
-                <User className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                <User className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Auth ID (Optional)</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Auth ID (Optional)</label>
               <input
                 type="text"
                 value={authId}
                 onChange={(e) => setAuthId(e.target.value)}
-                placeholder="Same as username"
-                className="glass-input w-full px-3 py-2 rounded-xl text-sm text-slate-100 placeholder-slate-500 outline-none"
+                placeholder="901-iHDT"
+                className="glass-input w-full px-3 py-2 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none"
               />
             </div>
           </div>
 
           {/* Password */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Password</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Password</label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="glass-input w-full pl-9 pr-10 py-2 rounded-xl text-sm text-slate-100 placeholder-slate-500 outline-none font-mono"
+                className="glass-input w-full pl-9 pr-10 py-2 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none font-mono"
               />
-              <Lock className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+              <Lock className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200"
+                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -168,7 +186,7 @@ export const SipAccountModal: React.FC<SipAccountModalProps> = ({
 
           {/* Transport */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">SIP Transport</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">SIP Transport</label>
             <div className="grid grid-cols-3 gap-2">
               {(['udp', 'tcp', 'tls'] as const).map((t) => (
                 <button
@@ -178,7 +196,7 @@ export const SipAccountModal: React.FC<SipAccountModalProps> = ({
                   className={`py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all border ${
                     transport === t
                       ? 'bg-brand-600 border-brand-500 text-white shadow-md'
-                      : 'bg-surface-200 border-slate-700/50 text-slate-400 hover:text-slate-200'
+                      : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >
                   {t}
@@ -193,7 +211,7 @@ export const SipAccountModal: React.FC<SipAccountModalProps> = ({
               <button
                 type="button"
                 onClick={onUnregister}
-                className="w-1/3 py-2.5 rounded-xl border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 font-semibold text-xs transition-colors"
+                className="w-1/3 py-2.5 rounded-xl border border-rose-500/40 text-rose-500 hover:bg-rose-500/10 font-semibold text-xs transition-colors"
               >
                 Disconnect
               </button>

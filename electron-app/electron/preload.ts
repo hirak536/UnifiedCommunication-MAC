@@ -26,6 +26,7 @@ export interface PjsipApi {
   onRegState: (callback: (reg: any) => void) => () => void;
   onAudioDevices: (callback: (devices: any) => void) => () => void;
   onDaemonStatus: (callback: (status: any) => void) => () => void;
+  onLog: (callback: (log: string) => void) => () => void;
 }
 
 const api: PjsipApi = {
@@ -64,6 +65,11 @@ const api: PjsipApi = {
     const handler = (_: any, data: any) => callback(data);
     ipcRenderer.on('pjsip:daemon_status', handler);
     return () => ipcRenderer.removeListener('pjsip:daemon_status', handler);
+  },
+  onLog: (callback) => {
+    const handler = (_: any, data: string) => callback(data);
+    ipcRenderer.on('pjsip:log', handler);
+    return () => ipcRenderer.removeListener('pjsip:log', handler);
   },
 };
 

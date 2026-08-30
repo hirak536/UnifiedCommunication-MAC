@@ -110,7 +110,9 @@ export class PjsipService extends EventEmitter {
 
       // Handle standard error (PJSIP internal logs)
       this.process.stderr.on('data', (data: Buffer) => {
-        console.error(`[DAEMON-STDERR] ${data.toString().trim()}`);
+        const text = data.toString();
+        console.error(`[DAEMON-STDERR] ${text.trim()}`);
+        this.emit('log', text);
       });
 
       // Handle process exit

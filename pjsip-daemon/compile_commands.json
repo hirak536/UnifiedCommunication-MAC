@@ -1,0 +1,7 @@
+[
+  {
+    "directory": "/Users/hirakpatel/Documents/Project/UnifiedCommunication-MAC/pjsip-daemon",
+    "command": "clang++ -std=c++17 -DPJ_AUTOCONF=1 -DPJ_IS_BIG_ENDIAN=0 -DPJ_IS_LITTLE_ENDIAN=1 -O2 -fPIC -Wall -Wextra -Iinclude -I/Users/hirakpatel/Documents/Project/UnifiedCommunication-MAC/pjproject-2.17/pjlib/include -I/Users/hirakpatel/Documents/Project/UnifiedCommunication-MAC/pjproject-2.17/pjlib-util/include -I/Users/hirakpatel/Documents/Project/UnifiedCommunication-MAC/pjproject-2.17/pjnath/include -I/Users/hirakpatel/Documents/Project/UnifiedCommunication-MAC/pjproject-2.17/pjmedia/include -I/Users/hirakpatel/Documents/Project/UnifiedCommunication-MAC/pjproject-2.17/pjsip/include -c src/main.cpp -o src/main.o",
+    "file": "/Users/hirakpatel/Documents/Project/UnifiedCommunication-MAC/pjsip-daemon/src/main.cpp"
+  }
+]

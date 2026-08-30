@@ -7,6 +7,8 @@
 #include <thread>
 #include <atomic>
 #include <map>
+#include <unistd.h>
+
 // PJSIP compilation guards for IDE language servers & compilers
 #ifndef PJ_AUTOCONF
 #define PJ_AUTOCONF 1
@@ -35,7 +37,7 @@ class DaemonApp;
 class SoftphoneAccount;
 class SoftphoneCall;
 
-// Thread-safe JSON event emitter
+// Thread-safe JSON event emitter on stdout
 static std::mutex g_cout_mutex;
 static void emitEvent(const json& event_data) {
     std::lock_guard<std::mutex> lock(g_cout_mutex);
@@ -50,6 +52,15 @@ static void logError(const std::string& msg, int code = -1) {
     emitEvent(err);
     std::cerr << "[DAEMON-ERR] " << msg << " (code: " << code << ")" << std::endl;
 }
+
+// Redirect all internal PJSIP logs to stderr so stdout remains 100% pure JSON lines
+class StderrLogWriter : public LogWriter {
+public:
+    void write(const LogEntry &entry) override {
+        std::cerr << "[PJSIP] " << entry.msg << std::flush;
+    }
+};
+static StderrLogWriter g_log_writer;
 
 // Custom Call class
 class SoftphoneCall : public Call {
@@ -96,6 +107,11 @@ private:
     std::map<int, std::shared_ptr<SoftphoneCall>> calls_;
     std::atomic<bool> running_{true};
 
+    // Stored account configuration
+    std::string configured_server_;
+    int configured_port_ = 5060;
+    std::string configured_transport_ = "udp";
+
 public:
     DaemonApp() = default;
     ~DaemonApp() { cleanup(); }
@@ -117,15 +133,16 @@ public:
             ep_cfg.medConfig.quality = 10;
             ep_cfg.medConfig.noVad = false;
 
-            // Logging config - route verbose PJSIP logs to stderr
-            ep_cfg.logConfig.level = 3;
-            ep_cfg.logConfig.consoleLevel = 3;
+            // Custom log writer: routes all PJSIP logs to stderr, keeping stdout purely for JSON
+            ep_cfg.logConfig.writer = &g_log_writer;
+            ep_cfg.logConfig.consoleLevel = 0; // Disable direct stdout printing
+            ep_cfg.logConfig.level = 4;
 
             ep_->libInit(ep_cfg);
 
-            // Transport configurations: UDP, TCP
+            // Transport configurations: UDP & TCP
             TransportConfig udp_cfg;
-            udp_cfg.port = 0; // Dynamic local port
+            udp_cfg.port = 0;
             ep_->transportCreate(PJSIP_TRANSPORT_UDP, udp_cfg);
 
             TransportConfig tcp_cfg;
@@ -160,15 +177,19 @@ public:
     void cleanup() {
         if (!ep_) return;
         try {
-            std::lock_guard<std::mutex> lock(calls_mutex_);
-            calls_.clear();
+            {
+                std::lock_guard<std::mutex> lock(calls_mutex_);
+                calls_.clear();
+            }
 
             if (acc_) {
                 acc_.reset();
             }
 
-            ep_->libDestroy();
-            ep_.reset();
+            if (ep_) {
+                ep_->libDestroy();
+                ep_.reset();
+            }
         } catch (Error &err) {
             std::cerr << "[DAEMON] Error during cleanup: " << err.info() << std::endl;
         }
@@ -190,12 +211,17 @@ public:
                 return;
             }
 
+            // Save configured network settings for outbound calls
+            configured_server_ = server;
+            configured_port_ = port;
+            configured_transport_ = transport;
+
             std::ostringstream id_uri;
             id_uri << "sip:" << username << "@" << server;
 
             std::ostringstream reg_uri;
             reg_uri << "sip:" << server;
-            if (port > 0 && port != 5060) {
+            if (port > 0) {
                 reg_uri << ":" << port;
             }
             if (transport == "tcp") {
@@ -209,6 +235,10 @@ public:
             acc_cfg.regConfig.registrarUri = reg_uri.str();
             acc_cfg.regConfig.registerOnAdd = true;
             acc_cfg.regConfig.timeoutSec = 300;
+
+            // Route all outbound traffic through the registrar proxy
+            acc_cfg.sipConfig.proxies.clear();
+            acc_cfg.sipConfig.proxies.push_back(reg_uri.str());
 
             if (!password.empty()) {
                 AuthCredInfo cred("digest", "*", auth_id, 0, password);
@@ -232,6 +262,8 @@ public:
             res["reason"] = "Registering...";
             res["is_registered"] = false;
             emitEvent(res);
+
+            std::cerr << "[DAEMON] Account created. Registrar: " << reg_uri.str() << std::endl;
 
         } catch (Error &err) {
             logError("Account registration exception: " + err.info(), err.status);
@@ -271,20 +303,25 @@ public:
 
         try {
             std::string dest_uri = destination;
+            
+            // If given a plain number or extension, format full SIP URI with server & port
             if (dest_uri.find("sip:") != 0) {
-                // Determine server from account or append
-                AccountInfo acc_info = acc_->getInfo();
-                std::string acc_uri = acc_info.uri;
-                size_t at_pos = acc_uri.find('@');
-                if (at_pos != std::string::npos) {
-                    std::string host = acc_uri.substr(at_pos + 1);
-                    size_t angle_pos = host.find('>');
-                    if (angle_pos != std::string::npos) host = host.substr(0, angle_pos);
-                    dest_uri = "sip:" + dest_uri + "@" + host;
+                if (dest_uri.find('@') == std::string::npos) {
+                    std::ostringstream ss;
+                    ss << "sip:" << dest_uri << "@" << configured_server_;
+                    if (configured_port_ > 0 && configured_port_ != 5060) {
+                        ss << ":" << configured_port_;
+                    }
+                    if (configured_transport_ == "tcp") {
+                        ss << ";transport=tcp";
+                    }
+                    dest_uri = ss.str();
                 } else {
                     dest_uri = "sip:" + dest_uri;
                 }
             }
+
+            std::cerr << "[DAEMON] Calling destination: " << dest_uri << std::endl;
 
             auto call = std::make_shared<SoftphoneCall>(*this, *acc_);
             CallOpParam prm(true);
@@ -299,6 +336,8 @@ public:
                 calls_[call_id] = call;
             }
 
+            std::cerr << "[DAEMON] Call successfully initiated with Call ID: " << call_id << std::endl;
+
         } catch (Error &err) {
             logError("Make call error: " + err.info(), err.status);
         }
@@ -310,6 +349,7 @@ public:
             std::lock_guard<std::mutex> lock(calls_mutex_);
             auto it = calls_.find(call_id);
             if (it != calls_.end()) call = it->second;
+            if (!call && !calls_.empty()) call = calls_.begin()->second;
         }
 
         if (!call) {
@@ -332,22 +372,30 @@ public:
         std::shared_ptr<SoftphoneCall> call;
         {
             std::lock_guard<std::mutex> lock(calls_mutex_);
-            if (call_id < 0 && !calls_.empty()) {
-                call = calls_.begin()->second;
-            } else {
+            if (call_id >= 0) {
                 auto it = calls_.find(call_id);
                 if (it != calls_.end()) call = it->second;
+            }
+            if (!call && !calls_.empty()) {
+                call = calls_.begin()->second;
             }
         }
 
         if (!call) {
-            logError("Hangup failed: Call ID not found");
+            std::cerr << "[DAEMON] No active call found to hang up" << std::endl;
+            // Emit disconnected event anyway so UI returns to idle
+            json res;
+            res["event"] = "call_state";
+            res["call_id"] = (call_id >= 0 ? call_id : 0);
+            res["state"] = "DISCONNECTED";
+            res["reason"] = "Terminated";
+            emitEvent(res);
             return;
         }
 
         try {
             CallOpParam prm;
-            prm.statusCode = PJSIP_SC_BUSY_HERE;
+            prm.statusCode = PJSIP_SC_DECLINE;
             call->hangup(prm);
         } catch (Error &err) {
             logError("Hangup error: " + err.info(), err.status);
@@ -360,6 +408,7 @@ public:
             std::lock_guard<std::mutex> lock(calls_mutex_);
             auto it = calls_.find(call_id);
             if (it != calls_.end()) call = it->second;
+            if (!call && !calls_.empty()) call = calls_.begin()->second;
         }
 
         if (!call) {
@@ -396,6 +445,7 @@ public:
             std::lock_guard<std::mutex> lock(calls_mutex_);
             auto it = calls_.find(call_id);
             if (it != calls_.end()) call = it->second;
+            if (!call && !calls_.empty()) call = calls_.begin()->second;
         }
 
         if (!call) {
@@ -432,6 +482,7 @@ public:
             std::lock_guard<std::mutex> lock(calls_mutex_);
             auto it = calls_.find(call_id);
             if (it != calls_.end()) call = it->second;
+            if (!call && !calls_.empty()) call = calls_.begin()->second;
         }
 
         if (!call) {
@@ -585,6 +636,9 @@ void SoftphoneCall::onCallState(OnCallStateParam &prm) {
         res["reason"] = ci.lastReason;
         emitEvent(res);
 
+        std::cerr << "[DAEMON-CALL] State: " << state_str 
+                  << " (status: " << ci.lastStatusCode << " " << ci.lastReason << ")" << std::endl;
+
         if (ci.state == PJSIP_INV_STATE_DISCONNECTED) {
             app_.removeCall(getId());
         }
@@ -599,17 +653,20 @@ void SoftphoneCall::onCallMediaState(OnCallMediaStateParam &prm) {
     try {
         CallInfo ci = getInfo();
         for (unsigned i = 0; i < ci.media.size(); ++i) {
-            if (ci.media[i].type == PJMEDIA_TYPE_AUDIO && getMedia(i)) {
+            if (ci.media[i].type == PJMEDIA_TYPE_AUDIO && 
+                (ci.media[i].status == PJSUA_CALL_MEDIA_ACTIVE || ci.media[i].status == PJSUA_CALL_MEDIA_REMOTE_HOLD)) {
                 AudioMedia aud_med = getAudioMedia(i);
                 AudDevManager& mgr = app_.ep()->audDevManager();
 
-                // Connect incoming audio to speaker
-                mgr.getPlaybackDevMedia().startTransmit(aud_med);
+                // Connect incoming call audio to speaker
+                aud_med.startTransmit(mgr.getPlaybackDevMedia());
 
                 // Connect microphone to outgoing call
                 if (!is_muted_) {
                     mgr.getCaptureDevMedia().startTransmit(aud_med);
                 }
+
+                std::cerr << "[DAEMON-AUDIO] Connected call incoming audio -> speaker & mic -> call" << std::endl;
 
                 json res;
                 res["event"] = "call_media_state";
@@ -700,8 +757,7 @@ int main(int argc, char* argv[]) {
                 json res;
                 res["event"] = "shutdown";
                 emitEvent(res);
-                app.requestStop();
-                break;
+                _exit(0);
             } else {
                 logError("Unknown command: " + command);
             }

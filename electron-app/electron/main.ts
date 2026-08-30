@@ -1,16 +1,17 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, powerSaveBlocker } from 'electron';
 import path from 'path';
 import { PjsipService, SipAccountConfig } from './pjsip-service';
 
 let mainWindow: BrowserWindow | null = null;
+let powerBlockerId: number | null = null;
 const pjsipService = PjsipService.getInstance();
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 440,
-    height: 760,
-    minWidth: 400,
-    minHeight: 680,
+    width: 860,
+    height: 720,
+    minWidth: 440,
+    minHeight: 600,
     title: 'Unified Softphone',
     backgroundColor: '#0B0F19',
     titleBarStyle: 'hiddenInset',
@@ -20,6 +21,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      backgroundThrottling: false, // Prevents timer/audio throttling in background
     },
   });
 
@@ -65,6 +67,12 @@ function setupPjsipListeners() {
   pjsipService.on('daemon_status', (data) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('pjsip:daemon_status', data);
+    }
+  });
+
+  pjsipService.on('log', (logText) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('pjsip:log', logText);
     }
   });
 }
@@ -116,6 +124,10 @@ app.whenReady().then(() => {
   setupIpcHandlers();
   setupPjsipListeners();
   
+  // Prevent macOS app suspension / hibernation so SIP keepalives & audio RTP remain active
+  powerBlockerId = powerSaveBlocker.start('prevent-app-suspension');
+  console.log(`[Main] Hibernation prevention active (powerSaveBlocker ID: ${powerBlockerId})`);
+
   // Start PJSIP Daemon
   pjsipService.start();
 
@@ -135,6 +147,9 @@ app.on('before-quit', async (event) => {
     event.preventDefault();
     isQuitting = true;
     console.log('[Main] Shutting down PJSIP daemon before app exit...');
+    if (powerBlockerId !== null && powerSaveBlocker.isStarted(powerBlockerId)) {
+      powerSaveBlocker.stop(powerBlockerId);
+    }
     try {
       await pjsipService.shutdown();
     } catch (e) {
