@@ -1,0 +1,34 @@
+{
+  "appId": "com.unifiedcommunication.softphone",
+  "productName": "Unified Softphone",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*",
+    "dist-electron/**/*",
+    "package.json"
+  ],
+  "extraResources": [
+    {
+      "from": "../pjsip-daemon/bin",
+      "to": "bin",
+      "filter": ["pjsip-daemon*"]
+    }
+  ],
+  "mac": {
+    "category": "public.app-category.business",
+    "target": ["dmg", "zip"],
+    "hardenedRuntime": true,
+    "gatekeeperAssess": false,
+    "entitlements": "build/entitlements.mac.plist",
+    "entitlementsInherit": "build/entitlements.mac.plist"
+  },
+  "linux": {
+    "target": ["AppImage", "deb"],
+    "category": "Network"
+  },
+  "win": {
+    "target": ["nsis"]
+  }
+}

@@ -1,0 +1,12 @@
+CompileFlags:
+  Add:
+    - -std=c++17
+    - -DPJ_AUTOCONF=1
+    - -DPJ_IS_BIG_ENDIAN=0
+    - -DPJ_IS_LITTLE_ENDIAN=1
+    - -I./pjsip-daemon/include
+    - -I./pjproject-2.17/pjlib/include
+    - -I./pjproject-2.17/pjlib-util/include
+    - -I./pjproject-2.17/pjnath/include
+    - -I./pjproject-2.17/pjmedia/include
+    - -I./pjproject-2.17/pjsip/include
